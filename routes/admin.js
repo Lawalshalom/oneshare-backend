@@ -120,6 +120,66 @@ router.post("/approve-donation", verifyToken, (req, res) => {
     })
 })
 
+router.post("/delete-donor", verifyToken, (req, res) => {
+    const { id } = req.body;
+    jwt.verify(req.token, "secretonesharekey", (err, authData) => {
+        if (err) return res.status(201).json({error: "Something bad happened, Please try again", err});
+        if (authData) {
+            donorUser.deleteOne({ id }, (err) => {
+                if (err) return res.status(201).json({error: "Something bad happened, Please try again", err});
+                return res.status(201).json({
+                    success: "Donor user deleted successfully"
+                })
+            })
+        }
+    })
+})
+
+
+router.post("/delete-beneficiary", verifyToken, (req, res) => {
+    const { id } = req.body;
+    jwt.verify(req.token, "secretonesharekey", (err, authData) => {
+        if (err) return res.status(201).json({error: "Something bad happened, Please try again", err});
+        if (authData) {
+            beneficiaryUser.deleteOne({ id }, (err) => {
+                if (err) return res.status(201).json({error: "Something bad happened, Please try again", err});
+                return res.status(201).json({
+                    success: "Beneficiary user deleted successfully"
+                })
+            })
+        }
+    })
+})
+
+
+router.get("/delete-beneficiaries-all", verifyToken, (req, res) => {
+    jwt.verify(req.token, "secretonesharekey", (err, authData) => {
+        if (err) return res.status(201).json({error: "Something bad happened, Please try again", err});
+        if (authData) {
+            beneficiaryUser.deleteMany({ accountType: "beneficiary"}, (err) => {
+                if (err) return res.status(201).json({error: "Something bad happened, Please try again", err});
+                return res.status(201).json({
+                    success: "All beneficiary users deleted successfully"
+                })
+            })
+        }
+    })
+})
+
+
+router.get("/delete-donors-all", verifyToken, (req, res) => {
+    jwt.verify(req.token, "secretonesharekey", (err, authData) => {
+        if (err) return res.status(201).json({error: "Something bad happened, Please try again", err});
+        if (authData) {
+            donorUser.deleteMany({ accountType: "beneficiary"}, (err) => {
+                if (err) return res.status(201).json({error: "Something bad happened, Please try again", err});
+                return res.status(201).json({
+                    success: "All donor users deleted successfully"
+                })
+            })
+        }
+    })
+})
 
 function verifyToken(req, res, next){
     const bearerHeader = req.headers['authorization'];

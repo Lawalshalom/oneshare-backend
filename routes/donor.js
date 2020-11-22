@@ -2,18 +2,11 @@ const router = require("express").Router();
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const uuid = require("uuidv4").uuid;
+const path = require("path");
+const fs = require("fs");
 
 const donorUser = require("../models/Donor");
-
-
-router.post("/user", verifyToken, (req, res) => {
-    jwt.verify(req.token, "secretonesharekey", (err, authData) => {
-        if (err) return res.status(201).json({error: "Something bad happened, Please try again", err})
-            if (authData) {
-                res.status(201).json({ authData });
-            }
-        })
-    });
+const beneficiaryUser = require("../models/Beneficiary");
 
 router.post("/create-donation", verifyToken, (req, res) => {
     jwt.verify(req.token, "secretonesharekey", (err, authData) => {
@@ -21,36 +14,55 @@ router.post("/create-donation", verifyToken, (req, res) => {
             res.status(403).json({error: "Unathorized, Please login again", err})
         }
         else {
-            const { picture, donationType, donationDetails } = req.body;
-            const donationItem = {
-                picture,
+                if (!req.files){
+                    return res.status(201).json({ error: "No file uploaded" });
+                }
+
+            const image = req.files.myfile;
+            const id = uuid();
+            const filePath = path.join( __dirname, '../public/uploads/' + id);
+
+            image.mv(filePath, (error) => {
+              if (error) {
+               return res.json({ error: 'error', message: error })
+              }
+
+                const { donationType, donationDetails } = req.body;
+                const { userState, userLGA, accountSubtype, name } = authData.user
+                const donationItem = {
+                id,
+                filePath,
                 donationType,
                 donationDetails,
-                donationState: authData.user.userState,
-                donationLGA: authData.user.userLGA,
+                name,
+                accountSubtype,
+                userState,
+                userLGA,
                 dateCreated: Date.now(),
                 approved: false,
-                completed: false,
-                id: uuid()
-            }
+                completed: false
+                }
 
-            donorUser.findOne({ email: authData.user.email }, (err, user) => {
+                donorUser.findOne({ email: authData.user.email }, (err, user) => {
                 if (err) return res.status(201).json({error: "Something bad happened, Please try again", err});
                 user.donations.push(donationItem);
                 user.save()
                 .then(newUser => {
                     res.status(201).json({
                         success: "Donation added successfully",
-                        user: newUser
+                        user: newUser,
+                        donationItem
                     })
                 })
                 .catch(err => {
                 return res.status(201).json({error: "Something bad happened, Please try again", err})
                 })
+                })
             })
         }
     })
 });
+
 
 
 router.post("/delete-donation", verifyToken, (req, res) => {
@@ -60,7 +72,10 @@ router.post("/delete-donation", verifyToken, (req, res) => {
             res.status(403).json({error: "Unathorized, Please login again", err})
         }
         else {
-            donorUser.findOne({ email: authData.user.email }, (err, user) => {
+            const filePath = path.join( __dirname, '../public/uploads/' + id);
+            fs.unlink(filePath, (err) => {
+                if (err) return res.status(201).json({error: "Something bad happened, Please try again", err});
+                donorUser.findOne({ email: authData.user.email }, (err, user) => {
                 if (err) return res.status(201).json({error: "Something bad happened, Please try again", err})
                 if (user){
                     user.donations.forEach(donation => {
@@ -80,11 +95,29 @@ router.post("/delete-donation", verifyToken, (req, res) => {
                         }
                     });
                 }
+                })
             })
         }
     })
 })
 
+router.get("/choose-beneficiary", verifyToken, (req, res) => {
+    jwt.verify(req.token, "secretonesharekey", (err, authData) => {
+        if (err){
+            res.status(403).json({error: "Unathorized, Please login again", err})
+        }
+        else {
+            beneficiaryUser.find((err, users) => {
+            if (err) return res.status(201).json({error: "Something bad happened, Please try again", err})
+            const requests = [];
+            users.forEach(user => {
+                requests.push(user.requests);
+            })
+            return res.status(201).json({requests});
+            })
+        }
+    })
+})
 
 
 router.post("/change-password", verifyToken, (req, res) => {

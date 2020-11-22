@@ -24,12 +24,15 @@ router.post("/create-request", verifyToken, (req, res) => {
         }
         else {
             const { requestType, requestDetails } = req.body;
+            const { userState, userLGA, accountSubtype, name } = authData.user
             const requestItem = {
                 requestType,
                 requestDetails,
+                name,
+                accountSubtype,
+                userState,
+                userLGA,
                 dateCreated: Date.now(),
-                requestState: authData.user.userState,
-                requestLGA: authData.user.userLGA,
                 approved: false,
                 completed: false,
                 id: uuid()

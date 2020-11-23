@@ -23,12 +23,14 @@ router.post("/create-request", verifyToken, (req, res) => {
             res.status(403).json({error: "Unathorized, Please login again", err})
         }
         else {
-            const { requestType, requestDetails } = req.body;
-            const { userState, userLGA, accountSubtype, name } = authData.user
+            const { requestType, requestDetails, phoneNumber } = req.body;
+            const { userState, userLGA, accountSubtype, name, email } = authData.user
             const requestItem = {
                 requestType,
                 requestDetails,
                 name,
+                phoneNumber,
+                email,
                 accountSubtype,
                 userState,
                 userLGA,

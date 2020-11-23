@@ -40,7 +40,9 @@ router.post("/create-donation", verifyToken, (req, res) => {
                 userLGA,
                 dateCreated: Date.now(),
                 approved: false,
-                completed: false
+                completed: false,
+                beneficiary: null,
+                dateCompleted: null
                 }
 
                 donorUser.findOne({ email: authData.user.email }, (err, user) => {
@@ -114,6 +116,82 @@ router.get("/choose-beneficiary", verifyToken, (req, res) => {
                 requests.push(user.requests);
             })
             return res.status(201).json({requests});
+            })
+        }
+    })
+})
+
+router.post("/save-chosen-beneficiary", verifyToken, (req, res) => {
+    const { donationId, beneficiary, email } = req.body;
+    jwt.verify(req.token, "secretonesharekey", (err, authData) => {
+        if (err){
+            res.status(403).json({error: "Unathorized, Please login again", err})
+        }
+        else {
+            donorUser.findOne({email}, (err, user) => {
+                if (err) return res.status(201).json({error: "Something bad happened, Please try again", err})
+               if (user){
+                    user.donations.forEach(donation => {
+                        if (donation.id === donationId){
+                           donation.beneficiary = beneficiary;
+                        }
+                    })
+                    user.save()
+                    .then(newUser => {
+                        res.status(201).json({
+                            success: "Beneficiary added successfully",
+                            user: newUser
+                        })
+                    })
+                    .catch(err => {
+                    return res.status(201).json({error: "Something bad happened, Please try again", err})
+                    })
+               }
+            })
+        }
+    })
+})
+
+router.post("/complete-donation", verifyToken, (req, res) => {
+    const { donationId, donationEmail, requestId, requestEmail } = req.body;
+    jwt.verify(req.token, "secretonesharekey", (err, authData) => {
+        if (err){
+            res.status(403).json({error: "Unathorized, Please login again", err})
+        }
+        else {
+            if (!donationId || !donationEmail || !requestId || !requestEmail){
+                return res.json({error: "fields cannot be empty"});
+            }
+            donorUser.findOne({ email: donationEmail }, (err, user) => {
+                if (err) return res.status(201).json({error: "Something bad happened, Please try again", err})
+               if (user){
+                   user.donations.forEach(donation => {
+                       if (donation.id === donationId){
+                           donation.completed = true;
+                           donation.dateCompleted = Date.now();
+                       }
+                   })
+                   user.save((err, newDonor) => {
+                        if (err) return res.status(201).json({error: "Something bad happened, Please try again", err})
+                        if (newDonor){
+                            beneficiaryUser.findOne({ email: requestEmail }, (err, user) => {
+                                if (err) return res.status(201).json({error: "Something bad happened, Please try again", err})
+                                if (user){
+                                    user.requests.forEach(request => {
+                                        if (request.id === requestId){
+                                            request.completed = true;
+                                            request.dateCompleted = Date.now()
+                                        }
+                                    })
+                                    user.save((err, newBeneficiaryUser) => {
+                                        if (err) return res.status(201).json({error: "Something bad happened, Please try again", err})
+                                        return res.status(201).json({success: "Donation completed successfully", user: donorUser})
+                                    })
+                                }
+                            })
+                        }
+                   })
+               }
             })
         }
     })

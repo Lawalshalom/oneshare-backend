@@ -6,12 +6,14 @@ const uuid = require("uuidv4").uuid;
 const beneficiaryUser = require("../models/Beneficiary");
 
 
-
 router.post("/user", verifyToken, (req, res) => {
     jwt.verify(req.token, "secretonesharekey", (err, authData) => {
         if (err) return res.status(201).json({error: "Something bad happened, Please try again", err})
         if (authData) {
-            res.status(201).json({ authData });
+            beneficiaryUser.findOne({ email: authData.user.email }, (err, user) => {
+                if (err) return res.status(201).json({error: "Something bad happened, Please try again", err})
+                if (user) return res.status(201).json({ user });
+            })
         }
     })
 });

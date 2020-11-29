@@ -8,6 +8,19 @@ const fs = require("fs");
 const donorUser = require("../models/Donor");
 const beneficiaryUser = require("../models/Beneficiary");
 
+
+router.post("/user", verifyToken, (req, res) => {
+    jwt.verify(req.token, "secretonesharekey", (err, authData) => {
+        if (err) return res.status(201).json({error: "Something bad happened, Please try again", err})
+        if (authData) {
+            donorUser.findOne({ email: authData.user.email }, (err, user) => {
+                if (err) return res.status(201).json({error: "Something bad happened, Please try again", err})
+                if (user) return res.status(201).json({ user });
+            })
+        }
+    })
+});
+
 router.post("/create-donation", verifyToken, (req, res) => {
     jwt.verify(req.token, "secretonesharekey", (err, authData) => {
         if (err){
@@ -74,7 +87,7 @@ router.post("/delete-donation", verifyToken, (req, res) => {
             res.status(403).json({error: "Unathorized, Please login again", err})
         }
         else {
-            const filePath = path.join( __dirname, '../public/uploads/' + id);
+            const filePath = path.join( __dirname, '../public/uploads/' + donationId);
             fs.unlink(filePath, (err) => {
                 if (err) return res.status(201).json({error: "Something bad happened, Please try again", err});
                 donorUser.findOne({ email: authData.user.email }, (err, user) => {
@@ -127,26 +140,32 @@ router.post("/save-chosen-beneficiary", verifyToken, (req, res) => {
         if (err){
             res.status(403).json({error: "Unathorized, Please login again", err})
         }
-        else {
+        if (authData) {
+            if (!donationId || !beneficiary || !email){
+                return res.json({error: "fields cannot be empty"});
+            }
             donorUser.findOne({email}, (err, user) => {
                 if (err) return res.status(201).json({error: "Something bad happened, Please try again", err})
-               if (user){
+                if (user){
+                    let index = null;
                     user.donations.forEach(donation => {
                         if (donation.id === donationId){
-                           donation.beneficiary = beneficiary;
+                            index = user.donations.indexOf(donation);
                         }
                     })
+                    user.donations[index].beneficiary = beneficiary;
+                    user.markModified("donations");
                     user.save()
-                    .then(newUser => {
-                        res.status(201).json({
-                            success: "Beneficiary added successfully",
-                            user: newUser
-                        })
-                    })
-                    .catch(err => {
-                    return res.status(201).json({error: "Something bad happened, Please try again", err})
-                    })
-               }
+                   .then(newUser => {
+                        return res.status(201).json({
+                           success: "Beneficiary added successfully",
+                           user: newUser
+                       })
+                   })
+                   .catch(err => {
+                   return res.status(201).json({error: "Something bad happened, Please try again", err})
+                   })
+                }
             })
         }
     })
@@ -169,27 +188,29 @@ router.post("/complete-donation", verifyToken, (req, res) => {
                        if (donation.id === donationId){
                            donation.completed = true;
                            donation.dateCompleted = Date.now();
-                       }
-                   })
-                   user.save((err, newDonor) => {
-                        if (err) return res.status(201).json({error: "Something bad happened, Please try again", err})
-                        if (newDonor){
-                            beneficiaryUser.findOne({ email: requestEmail }, (err, user) => {
+                           user.markModified("donations");
+                           user.save((err, newDonor) => {
                                 if (err) return res.status(201).json({error: "Something bad happened, Please try again", err})
-                                if (user){
-                                    user.requests.forEach(request => {
-                                        if (request.id === requestId){
-                                            request.completed = true;
-                                            request.dateCompleted = Date.now()
+                                if (newDonor){
+                                    beneficiaryUser.findOne({ email: requestEmail }, (err, user) => {
+                                        if (err) return res.status(201).json({error: "Something bad happened, Please try again", err})
+                                        if (user){
+                                            user.requests.forEach(request => {
+                                                if (request.id === requestId){
+                                                    request.completed = true;
+                                                    request.dateCompleted = Date.now()
+                                                    user.markModified("requests");
+                                                    user.save((err, newBeneficiaryUser) => {
+                                                        if (err) return res.status(201).json({error: "Something bad happened, Please try again", err})
+                                                        return res.status(201).json({success: "Donation completed successfully", user: newDonor})
+                                                    })
+                                                }
+                                            })
                                         }
                                     })
-                                    user.save((err, newBeneficiaryUser) => {
-                                        if (err) return res.status(201).json({error: "Something bad happened, Please try again", err})
-                                        return res.status(201).json({success: "Donation completed successfully", user: donorUser})
-                                    })
                                 }
-                            })
-                        }
+                           })
+                       }
                    })
                }
             })

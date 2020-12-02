@@ -69,7 +69,6 @@ router.post("/approve-request", verifyToken, (req, res) => {
                     data.forEach(request => {
                         if (request.id === requestId){
                             request.approved = true;
-
                             data.save()
                             .then(newData => {
                                 res.status(201).json({
@@ -180,6 +179,44 @@ router.get("/delete-donors-all", verifyToken, (req, res) => {
         }
     })
 })
+
+router.post("/change-password", verifyToken, (req, res) => {
+    const { oldPassword, newPassword } = req.body;
+    jwt.verify(req.token, "secretonesharekey", (err, authData) => {
+        if (err){
+            res.status(403).json({error: "Unathorized, Please login again", err})
+        }
+        else {
+            adminUser.findOne({ email: authData.user.email }, (err, user) => {
+                if (err) return res.status(201).json({error: "Something bad happened, Please try again", err});
+                if (user){
+                    bcrypt.compare(oldPassword, user.password, (err, result) => {
+                        if (err) return res.status(201).json({error: "Something bad happened, Please try again", err});
+                        if (!result) {
+                            return res.status(201).json({error: "Incorrect Old Password"})
+                        }
+                        else if (result) {
+                            bcrypt.hash(newPassword, 10, (err, hash) => {
+                                if (err) return res.status(201).json({error: "Something bad happened, Please try again", err});
+                                user.password = hash;
+                                user.save()
+                                .then(newUser => {
+                                    return res.status(201).json({success: "Password change successful", newUser});
+                                })
+                                .catch(err => {
+                                    return res.status(201).json({error: "Something bad happened, Please try again", err})
+                                })
+                            })
+                        }
+                    })
+                }
+
+            })
+        }
+    })
+})
+
+
 
 function verifyToken(req, res, next){
     const bearerHeader = req.headers['authorization'];

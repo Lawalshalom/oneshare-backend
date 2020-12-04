@@ -7,55 +7,32 @@ const adminUser = require("../models/Admin");
 const beneficiaryUser = require("../models/Beneficiary");
 const donorUser = require("../models/Donor");
 
-router.get("/overview-donor", verifyToken, (req, res) => {
-    jwt.verify(req.token, "secretonesharekey", (err, authData) => {
-        if (err) return res.status(201).json({error: "Something bad happened, Please try again", err})
-        if (authData) {
-            donorUser.find((err, users) => {
-                if (err) return res.status(201).json({error: "Something bad happened, Please try again", err});
-                if (users){
-                    return res.status(201).json({ donorUsers: users })
-                }
-            })
-        }
-    })
-})
-
-
-router.get("/overview-beneficiary", verifyToken, (req, res) => {
-    jwt.verify(req.token, "secretonesharekey", (err, authData) => {
-        if (err) return res.status(201).json({error: "Something bad happened, Please try again", err})
-        if (authData) {
-            beneficiaryUser.find((err, users) => {
-                if (err) return res.status(201).json({error: "Something bad happened, Please try again", err});
-                if (users){
-                    return res.status(201).json({ beneficiaryUsers: users })
-                }
-            })
-        }
-    })
-})
-
-
 router.get("/overview-all", verifyToken, (req, res) => {
     jwt.verify(req.token, "secretonesharekey", (err, authData) => {
         if (err) return res.status(201).json({error: "Something bad happened, Please try again", err})
         if (authData) {
-            donorUser.find((err, donorUsers) => {
+            return findUsers();
+        }
+    })
+})
+
+function findUsers(){
+    donorUser.find((err, donorUsers) => {
+        if (err) return res.status(201).json({error: "Something bad happened, Please try again", err});
+        if (donorUsers){
+            beneficiaryUser.find((err, beneficiaryUsers) => {
                 if (err) return res.status(201).json({error: "Something bad happened, Please try again", err});
-                if (donorUsers){
-                    beneficiaryUser.find((err, beneficiaryUsers) => {
-                        if (err) return res.status(201).json({error: "Something bad happened, Please try again", err});
-                        if (beneficiaryUsers){
-                            const users = [...donorUsers, ...beneficiaryUsers];
-                            return res.status(201).json({ users })
-                        }
+                if (beneficiaryUsers){
+                    const users = [...donorUsers, ...beneficiaryUsers];
+                    return res.status(201).json({
+                        success: "Request processed successfully",
+                        users
                     })
                 }
             })
         }
     })
-})
+}
 
 
 router.post("/approve-request", verifyToken, (req, res) => {
@@ -63,23 +40,24 @@ router.post("/approve-request", verifyToken, (req, res) => {
     jwt.verify(req.token, "secretonesharekey", (err, authData) => {
         if (err) return res.status(201).json({error: "Something bad happened, Please try again", err})
         if (authData) {
-            beneficiaryUser.find({ requests }, (err, data) => {
+            beneficiaryUser.find((err, data) => {
                 if (err) return res.status(201).json({error: "Something bad happened, Please try again", err})
                 if (data) {
-                    data.forEach(request => {
-                        if (request.id === requestId){
-                            request.approved = true;
-                            data.save()
-                            .then(newData => {
-                                res.status(201).json({
-                                    success: "Request added successfully",
-                                    data: newData
+                    data.forEach(user => {
+                        user.requestss.forEach(req => {
+                            if (req.id === requestId){
+                                req.approved = true;
+
+                                user.markModified("requests");
+                                user.save()
+                                .then(newData => {
+                                    return findUsers();
                                 })
-                            })
-                            .catch(err => {
-                            return res.status(201).json({error: "Something bad happened, Please try again", err})
-                            })
-                        }
+                                .catch(err => {
+                                return res.status(201).json({error: "Something bad happened, Please try again", err})
+                                })
+                            }
+                        })
                     })
                 }
             })
@@ -94,24 +72,24 @@ router.post("/approve-donation", verifyToken, (req, res) => {
     jwt.verify(req.token, "secretonesharekey", (err, authData) => {
         if (err) return res.status(201).json({error: "Something bad happened, Please try again", err})
         if (authData) {
-            donorUser.find({ donations }, (err, data) => {
+            donorUser.find( (err, data) => {
                 if (err) return res.status(201).json({error: "Something bad happened, Please try again", err})
                 if (data) {
-                    data.forEach(donation => {
-                        if (donation.id === donationId){
-                            donation.approved = true;
+                    data.forEach(user => {
+                        user.donations.forEach(donation => {
+                            if (donation.id === donationId){
+                                donation.approved = true;
 
-                            data.save()
-                            .then(newData => {
-                                res.status(201).json({
-                                    success: "Request added successfully",
-                                    data: newData
+                                user.markModified("donations");
+                                user.save()
+                                .then(newData => {
+                                    return findUsers()
                                 })
-                            })
-                            .catch(err => {
-                            return res.status(201).json({error: "Something bad happened, Please try again", err})
-                            })
-                        }
+                                .catch(err => {
+                                return res.status(201).json({error: "Something bad happened, Please try again", err})
+                                })
+                            }
+                        })
                     })
                 }
             })
@@ -126,9 +104,8 @@ router.post("/delete-donor", verifyToken, (req, res) => {
         if (authData) {
             donorUser.deleteOne({ id }, (err) => {
                 if (err) return res.status(201).json({error: "Something bad happened, Please try again", err});
-                return res.status(201).json({
-                    success: "Donor user deleted successfully"
-                })
+
+                return findUsers();
             })
         }
     })
@@ -142,39 +119,7 @@ router.post("/delete-beneficiary", verifyToken, (req, res) => {
         if (authData) {
             beneficiaryUser.deleteOne({ id }, (err) => {
                 if (err) return res.status(201).json({error: "Something bad happened, Please try again", err});
-                return res.status(201).json({
-                    success: "Beneficiary user deleted successfully"
-                })
-            })
-        }
-    })
-})
-
-
-router.get("/delete-beneficiaries-all", verifyToken, (req, res) => {
-    jwt.verify(req.token, "secretonesharekey", (err, authData) => {
-        if (err) return res.status(201).json({error: "Something bad happened, Please try again", err});
-        if (authData) {
-            beneficiaryUser.deleteMany({ accountType: "beneficiary"}, (err) => {
-                if (err) return res.status(201).json({error: "Something bad happened, Please try again", err});
-                return res.status(201).json({
-                    success: "All beneficiary users deleted successfully"
-                })
-            })
-        }
-    })
-})
-
-
-router.get("/delete-donors-all", verifyToken, (req, res) => {
-    jwt.verify(req.token, "secretonesharekey", (err, authData) => {
-        if (err) return res.status(201).json({error: "Something bad happened, Please try again", err});
-        if (authData) {
-            donorUser.deleteMany({ accountType: "beneficiary"}, (err) => {
-                if (err) return res.status(201).json({error: "Something bad happened, Please try again", err});
-                return res.status(201).json({
-                    success: "All donor users deleted successfully"
-                })
+                return findUsers();
             })
         }
     })

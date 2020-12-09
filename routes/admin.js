@@ -11,28 +11,24 @@ router.get("/overview-all", verifyToken, (req, res) => {
     jwt.verify(req.token, "secretonesharekey", (err, authData) => {
         if (err) return res.status(201).json({error: "Something bad happened, Please try again", err})
         if (authData) {
-            return findUsers();
-        }
-    })
-})
-
-function findUsers(){
-    donorUser.find((err, donorUsers) => {
-        if (err) return res.status(201).json({error: "Something bad happened, Please try again", err});
-        if (donorUsers){
-            beneficiaryUser.find((err, beneficiaryUsers) => {
+            donorUser.find((err, donorUsers) => {
                 if (err) return res.status(201).json({error: "Something bad happened, Please try again", err});
-                if (beneficiaryUsers){
-                    const users = [...donorUsers, ...beneficiaryUsers];
-                    return res.status(201).json({
-                        success: "Request processed successfully",
-                        users
+                if (donorUsers){
+                    beneficiaryUser.find((err, beneficiaryUsers) => {
+                        if (err) return res.status(201).json({error: "Something bad happened, Please try again", err});
+                        if (beneficiaryUsers){
+                            const users = [...donorUsers, ...beneficiaryUsers];
+                            return res.status(201).json({
+                                success: "Request processed successfully",
+                                users
+                            })
+                        }
                     })
                 }
             })
         }
     })
-}
+})
 
 
 router.post("/approve-request", verifyToken, (req, res) => {
@@ -51,7 +47,21 @@ router.post("/approve-request", verifyToken, (req, res) => {
                                 user.markModified("requests");
                                 user.save()
                                 .then(newData => {
-                                    return findUsers();
+                                    donorUser.find((err, donorUsers) => {
+                                        if (err) return res.status(201).json({error: "Something bad happened, Please try again", err});
+                                        if (donorUsers){
+                                            beneficiaryUser.find((err, beneficiaryUsers) => {
+                                                if (err) return res.status(201).json({error: "Something bad happened, Please try again", err});
+                                                if (beneficiaryUsers){
+                                                    const users = [...donorUsers, ...beneficiaryUsers];
+                                                    return res.status(201).json({
+                                                        success: "Request processed successfully",
+                                                        users
+                                                    })
+                                                }
+                                            })
+                                        }
+                                    })
                                 })
                                 .catch(err => {
                                 return res.status(201).json({error: "Something bad happened, Please try again", err})
@@ -83,7 +93,21 @@ router.post("/approve-donation", verifyToken, (req, res) => {
                                 user.markModified("donations");
                                 user.save()
                                 .then(newData => {
-                                    return findUsers()
+                                    donorUser.find((err, donorUsers) => {
+                                        if (err) return res.status(201).json({error: "Something bad happened, Please try again", err});
+                                        if (donorUsers){
+                                            beneficiaryUser.find((err, beneficiaryUsers) => {
+                                                if (err) return res.status(201).json({error: "Something bad happened, Please try again", err});
+                                                if (beneficiaryUsers){
+                                                    const users = [...donorUsers, ...beneficiaryUsers];
+                                                    return res.status(201).json({
+                                                        success: "Request processed successfully",
+                                                        users
+                                                    })
+                                                }
+                                            })
+                                        }
+                                    })
                                 })
                                 .catch(err => {
                                 return res.status(201).json({error: "Something bad happened, Please try again", err})
@@ -104,8 +128,21 @@ router.post("/delete-donor", verifyToken, (req, res) => {
         if (authData) {
             donorUser.deleteOne({ id }, (err) => {
                 if (err) return res.status(201).json({error: "Something bad happened, Please try again", err});
-
-                return findUsers();
+                 donorUser.find((err, donorUsers) => {
+                    if (err) return res.status(201).json({error: "Something bad happened, Please try again", err});
+                    if (donorUsers){
+                        beneficiaryUser.find((err, beneficiaryUsers) => {
+                            if (err) return res.status(201).json({error: "Something bad happened, Please try again", err});
+                            if (beneficiaryUsers){
+                                const users = [...donorUsers, ...beneficiaryUsers];
+                                return res.status(201).json({
+                                    success: "Request processed successfully",
+                                    users
+                                })
+                            }
+                        })
+                    }
+                })
             })
         }
     })
@@ -119,7 +156,21 @@ router.post("/delete-beneficiary", verifyToken, (req, res) => {
         if (authData) {
             beneficiaryUser.deleteOne({ id }, (err) => {
                 if (err) return res.status(201).json({error: "Something bad happened, Please try again", err});
-                return findUsers();
+                 donorUser.find((err, donorUsers) => {
+        if (err) return res.status(201).json({error: "Something bad happened, Please try again", err});
+        if (donorUsers){
+            beneficiaryUser.find((err, beneficiaryUsers) => {
+                if (err) return res.status(201).json({error: "Something bad happened, Please try again", err});
+                if (beneficiaryUsers){
+                    const users = [...donorUsers, ...beneficiaryUsers];
+                    return res.status(201).json({
+                        success: "Request processed successfully",
+                        users
+                    })
+                }
+            })
+        }
+    })
             })
         }
     })

@@ -32,7 +32,7 @@ router.get("/overview-all", verifyToken, (req, res) => {
 
 
 router.post("/approve-request", verifyToken, (req, res) => {
-    const { requestId } = req.body;
+    const { id } = req.body;
     jwt.verify(req.token, "secretonesharekey", (err, authData) => {
         if (err) return res.status(201).json({error: "Something bad happened, Please try again", err})
         if (authData) {
@@ -41,7 +41,7 @@ router.post("/approve-request", verifyToken, (req, res) => {
                 if (data) {
                     data.forEach(user => {
                         user.requestss.forEach(req => {
-                            if (req.id === requestId){
+                            if (req.id === id){
                                 req.approved = true;
 
                                 user.markModified("requests");
@@ -78,7 +78,7 @@ router.post("/approve-request", verifyToken, (req, res) => {
 
 
 router.post("/approve-donation", verifyToken, (req, res) => {
-    const { donationId } = req.body;
+    const { id } = req.body;
     jwt.verify(req.token, "secretonesharekey", (err, authData) => {
         if (err) return res.status(201).json({error: "Something bad happened, Please try again", err})
         if (authData) {
@@ -87,7 +87,7 @@ router.post("/approve-donation", verifyToken, (req, res) => {
                 if (data) {
                     data.forEach(user => {
                         user.donations.forEach(donation => {
-                            if (donation.id === donationId){
+                            if (donation.id === id){
                                 donation.approved = true;
 
                                 user.markModified("donations");
@@ -126,7 +126,8 @@ router.post("/delete-donor", verifyToken, (req, res) => {
     jwt.verify(req.token, "secretonesharekey", (err, authData) => {
         if (err) return res.status(201).json({error: "Something bad happened, Please try again", err});
         if (authData) {
-            donorUser.deleteOne({ id }, (err) => {
+
+            donorUser.findOneAndDelete({ _id: id }, (err, user) => {
                 if (err) return res.status(201).json({error: "Something bad happened, Please try again", err});
                  donorUser.find((err, donorUsers) => {
                     if (err) return res.status(201).json({error: "Something bad happened, Please try again", err});
@@ -136,7 +137,7 @@ router.post("/delete-donor", verifyToken, (req, res) => {
                             if (beneficiaryUsers){
                                 const users = [...donorUsers, ...beneficiaryUsers];
                                 return res.status(201).json({
-                                    success: "Request processed successfully",
+                                    success: "User deleted successfully",
                                     users
                                 })
                             }
@@ -154,7 +155,7 @@ router.post("/delete-beneficiary", verifyToken, (req, res) => {
     jwt.verify(req.token, "secretonesharekey", (err, authData) => {
         if (err) return res.status(201).json({error: "Something bad happened, Please try again", err});
         if (authData) {
-            beneficiaryUser.deleteOne({ id }, (err) => {
+            beneficiaryUser.findOneAndDelete({ _id: id }, (err) => {
                 if (err) return res.status(201).json({error: "Something bad happened, Please try again", err});
                  donorUser.find((err, donorUsers) => {
         if (err) return res.status(201).json({error: "Something bad happened, Please try again", err});
@@ -164,7 +165,7 @@ router.post("/delete-beneficiary", verifyToken, (req, res) => {
                 if (beneficiaryUsers){
                     const users = [...donorUsers, ...beneficiaryUsers];
                     return res.status(201).json({
-                        success: "Request processed successfully",
+                        success: "User deleted successfully",
                         users
                     })
                 }
